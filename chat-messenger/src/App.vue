@@ -1,10 +1,29 @@
 <template>
   <div class="messenger-layout">
+    <!-- Offline Banner -->
+    <div v-if="!isOnline" class="offline-banner">
+      ⚠️ Vous êtes actuellement en mode hors-ligne. Les requêtes IA seront synchronisées dès le retour de la connexion.
+    </div>
+
     <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h2>Assistant Odoo</h2>
-        <span class="version-badge">v16 & v19 Ready</span>
+        <div class="brand">
+          <img src="/pwa-icon.svg" alt="Logo" class="pwa-logo" />
+          <div>
+            <h2>Assistant Odoo</h2>
+            <span class="version-badge">PWA Ready • v16 & v19</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PWA Install Banner if installable -->
+      <div v-if="deferredPrompt" class="install-card">
+        <div class="install-info">
+          <strong>📱 Installer l'App</strong>
+          <span>Accès direct depuis votre bureau ou smartphone</span>
+        </div>
+        <button class="install-btn" @click="installPwa">Installer</button>
       </div>
 
       <div class="version-selector-box">
@@ -95,13 +114,16 @@
           </div>
           <div class="header-text">
             <h3>Assistant SODO <span class="badge-pill">Expert Odoo {{ selectedVersion.toUpperCase() }}</span></h3>
-            <p>Connecté aux bases de données Odoo 16 & Odoo 19 • Mode Temps Réel</p>
+            <p>Connecté aux bases de données Odoo 16 & Odoo 19 • Mode PWA</p>
           </div>
         </div>
 
         <div class="header-actions">
-          <div class="status-chip online">
-            <span class="dot-online"></span> Base Odoo Active
+          <button v-if="deferredPrompt" class="header-install-btn" @click="installPwa">
+            📲 Installer
+          </button>
+          <div :class="['status-chip', isOnline ? 'online' : 'offline']">
+            <span class="dot-online"></span> {{ isOnline ? 'Base Odoo Active' : 'Hors-ligne' }}
           </div>
         </div>
       </header>
@@ -166,11 +188,14 @@
 import { ref, onMounted, nextTick } from 'vue'
 
 const selectedVersion = ref('v19')
+const isOnline = ref(navigator.onLine)
+const deferredPrompt = ref(null)
+
 const messages = ref([
   { 
     role: 'bot', 
     version: 'v19',
-    text: "Bonjour ! Je suis l'Assistant SODO connecté aux bases de données Odoo 16 et Odoo 19.\n\nJe peux vous assister pour :\n- 📊 **Ventes & Chiffre d'Affaires (CA)** : Résumé financier, paniers moyens et top clients\n- 📦 **Stock & Inventaire** : Niveaux des quants, réapprovisionnement et alertes de rupture\n- 📁 **Organisation & Projets** : Suivi des tâches, planning Kanban et deadlines\n- 🛒 **Achats & Fournisseurs** : Dépenses engagées et bons de commande\n- 📈 **Monitoring 360°** : Tableau de bord de santé globale de l'entreprise\n- 💡 **Guides d'utilisation** : Aide pas-à-pas pour naviguer et utiliser les modules Odoo 16 & 19.\n\nQuelle information ou action souhaitez-vous consulter ?"
+    text: "Bonjour ! Je suis l'Assistant SODO connecté aux bases de données Odoo 16 et Odoo 19 (PWA Progressive Web App).\n\nJe peux vous assister pour :\n- 📊 **Ventes & Chiffre d'Affaires (CA)** : Résumé financier, paniers moyens et top clients\n- 📦 **Stock & Inventaire** : Niveaux des quants, réapprovisionnement et alertes de rupture\n- 📁 **Organisation & Projets** : Suivi des tâches, planning Kanban et deadlines\n- 🛒 **Achats & Fournisseurs** : Dépenses engagées et bons de commande\n- 📈 **Monitoring 360°** : Tableau de bord de santé globale de l'entreprise\n- 💡 **Guides d'utilisation** : Aide pas-à-pas pour naviguer et utiliser les modules Odoo 16 & 19.\n\nVous pouvez installer cette application sur votre bureau ou smartphone pour un accès instantané !"
   }
 ])
 const input = ref('')
@@ -239,7 +264,6 @@ const send = async () => {
 
 const formatMessage = (text) => {
   if (!text) return ''
-  // Convert Markdown bold, lists, and linebreaks to HTML
   let formatted = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -255,8 +279,26 @@ const navigateTo = (path) => {
   window.open(path, '_blank')
 }
 
+const installPwa = async () => {
+  if (deferredPrompt.value) {
+    deferredPrompt.value.prompt()
+    const { outcome } = await deferredPrompt.value.userChoice
+    if (outcome === 'accepted') {
+      deferredPrompt.value = null
+    }
+  }
+}
+
 onMounted(() => {
   scrollToBottom()
+
+  window.addEventListener('online', () => { isOnline.value = true })
+  window.addEventListener('offline', () => { isOnline.value = false })
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    deferredPrompt.value = e
+  })
 })
 </script>
 
@@ -269,6 +311,21 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
   width: 100vw;
   height: 100vh;
   background: #f0f2f5;
+  position: relative;
+}
+
+.offline-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #f59e0b;
+  color: #ffffff;
+  padding: 6px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 9999;
 }
 
 .sidebar {
@@ -282,15 +339,24 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 
 .sidebar-header {
   padding: 16px 20px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid #f0f2f5;
+  gap: 12px;
+}
+
+.pwa-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
 }
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   color: #1c1e21;
   font-weight: 700;
 }
@@ -298,16 +364,56 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 .version-badge {
   background: #e7f3ff;
   color: #1877f2;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
-  padding: 4px 8px;
-  border-radius: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.install-card {
+  margin: 12px 16px 0 16px;
+  padding: 12px;
+  background: linear-gradient(135deg, #1877f2 0%, #0a4bb3 100%);
+  color: #ffffff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 4px 10px rgba(24, 119, 242, 0.25);
+}
+
+.install-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.install-info strong {
+  font-size: 12px;
+}
+
+.install-info span {
+  font-size: 10px;
+  opacity: 0.9;
+}
+
+.install-btn {
+  background: #ffffff;
+  color: #1877f2;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .version-selector-box {
   padding: 14px 20px;
   background: #f8f9fa;
   border-bottom: 1px solid #e4e6eb;
+  margin-top: 10px;
 }
 
 .section-label {
@@ -457,16 +563,42 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
   color: #65676b;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.header-install-btn {
+  background: #1877f2;
+  color: #ffffff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(24, 119, 242, 0.3);
+}
+
 .status-chip {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #2e7d32;
-  background: #e8f5e9;
   padding: 5px 12px;
   border-radius: 20px;
+}
+
+.status-chip.online {
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+
+.status-chip.offline {
+  color: #c62828;
+  background: #ffebee;
 }
 
 .dot-online {
@@ -474,6 +606,10 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
   height: 8px;
   background: #4caf50;
   border-radius: 50%;
+}
+
+.status-chip.offline .dot-online {
+  background: #f44336;
 }
 
 .quick-chips-bar {
@@ -672,5 +808,9 @@ body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ro
 @keyframes bounce {
   0%, 60%, 100% { transform: translateY(0); }
   30% { transform: translateY(-5px); }
+}
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
 }
 </style>
