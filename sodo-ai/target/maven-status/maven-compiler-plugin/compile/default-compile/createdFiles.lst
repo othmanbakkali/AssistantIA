@@ -1,0 +1,16 @@
+com\sodo\ai\dto\AiDto$OllamaResponse.class
+com\sodo\ai\dto\AiDto$AiRequest.class
+com\sodo\ai\controller\AiController.class
+com\sodo\ai\service\PromptBuilderService.class
+com\sodo\ai\dto\AiDto$AiResponse.class
+com\sodo\ai\dto\AiDto$AiResponse$AiResponseBuilder.class
+com\sodo\ai\odoo\OdooConfigProperties.class
+com\sodo\ai\service\AiChatService.class
+com\sodo\ai\odoo\OdooConnectorService.class
+com\sodo\ai\service\VectorStoreService.class
+com\sodo\ai\dto\AiDto.class
+com\sodo\ai\service\ContextService.class
+com\sodo\ai\SodoAiApplication.class
+com\sodo\ai\dto\AiDto$AiRequest$AiRequestBuilder.class
+com\sodo\ai\odoo\OdooConfigProperties$InstanceConfig.class
+com\sodo\ai\odoo\OdooAnalyticsService.class
